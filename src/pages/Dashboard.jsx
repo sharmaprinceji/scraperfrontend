@@ -9,6 +9,14 @@ function Dashboard() {
   const [events, setEvents] = useState([]);
   const [loading, setLoading] = useState(true);
 
+  // pagination state
+  const [pagination, setPagination] = useState({
+    page: 1,
+    pages: 1,
+    total: 0,
+    limit: 10
+  });
+
   // filters state
   const [filters, setFilters] = useState({
     keyword: "",
@@ -23,22 +31,31 @@ function Dashboard() {
   useEffect(() => {
 
     if (user) {
-      fetchEvents();
+      fetchEvents(1);
     }
 
   }, [user, filters]);
 
-  const fetchEvents = async () => {
+
+
+  // fetch events with pagination
+  const fetchEvents = async (page = 1) => {
 
     try {
 
       setLoading(true);
 
-      const query = new URLSearchParams(filters).toString();
+      const query = new URLSearchParams({
+        ...filters,
+        page,
+        limit: pagination.limit
+      }).toString();
 
       const res = await API.get(`/events?${query}`);
 
       setEvents(res.data.data);
+
+      setPagination(res.data.pagination);
 
     } catch (error) {
 
@@ -52,6 +69,21 @@ function Dashboard() {
 
   };
 
+
+
+  // change page
+  const changePage = (newPage) => {
+
+    if (newPage < 1 || newPage > pagination.pages)
+      return;
+
+    fetchEvents(newPage);
+
+  };
+
+
+
+  // import event
   const importEvent = async (id) => {
 
     try {
@@ -62,7 +94,7 @@ function Dashboard() {
         notes: "Imported from dashboard"
       });
 
-      fetchEvents();
+      fetchEvents(pagination.page);
 
     } catch {
 
@@ -76,6 +108,9 @@ function Dashboard() {
 
   };
 
+
+
+  // handle filter change
   const handleChange = (e) => {
 
     setFilters({
@@ -85,13 +120,19 @@ function Dashboard() {
 
   };
 
+
+
   if (loading) {
+
     return (
       <div className="flex justify-center items-center h-screen">
         Loading...
       </div>
     );
+
   }
+
+
 
   return (
 
@@ -100,6 +141,8 @@ function Dashboard() {
       <h1 className="text-3xl font-bold mb-6">
         Dashboard
       </h1>
+
+
 
       {/* Filters */}
       <div className="grid grid-cols-5 gap-4 mb-6">
@@ -119,13 +162,11 @@ function Dashboard() {
           onChange={handleChange}
           className="border p-2 rounded"
         >
-
           <option value="">All Status</option>
           <option value="new">New</option>
           <option value="updated">Updated</option>
           <option value="inactive">Inactive</option>
           <option value="imported">Imported</option>
-
         </select>
 
         <input
@@ -154,6 +195,18 @@ function Dashboard() {
         />
 
       </div>
+
+
+
+      {/* Pagination info */}
+      <div className="mb-4 text-gray-600">
+
+        Showing page {pagination.page} of {pagination.pages}
+        ({pagination.total} total events)
+
+      </div>
+
+
 
       {/* Table */}
       <table className="w-full border">
@@ -228,6 +281,55 @@ function Dashboard() {
         </tbody>
 
       </table>
+
+
+
+      {/* Pagination Controls */}
+      <div className="flex justify-center items-center gap-2 mt-6">
+
+        <button
+          onClick={() => changePage(pagination.page - 1)}
+          disabled={pagination.page === 1}
+          className="px-3 py-1 bg-gray-300 rounded disabled:opacity-50"
+        >
+          Previous
+        </button>
+
+
+        {[...Array(pagination.pages)].map((_, index) => {
+
+          const pageNum = index + 1;
+
+          return (
+
+            <button
+              key={pageNum}
+              onClick={() => changePage(pageNum)}
+              className={`px-3 py-1 rounded ${
+                pagination.page === pageNum
+                  ? "bg-blue-500 text-white"
+                  : "bg-gray-200"
+              }`}
+            >
+              {pageNum}
+            </button>
+
+          );
+
+        })}
+
+
+        <button
+          onClick={() => changePage(pagination.page + 1)}
+          disabled={pagination.page === pagination.pages}
+          className="px-3 py-1 bg-gray-300 rounded disabled:opacity-50"
+        >
+          Next
+        </button>
+
+      </div>
+
+
 
     </div>
 

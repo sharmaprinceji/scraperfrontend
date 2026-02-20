@@ -2,7 +2,7 @@ import { useState } from "react";
 import EmailModal from "./EmailModal";
 
 function EventCard({ event }) {
-
+  console.log("=========>", event);
   const [showModal, setShowModal] = useState(false);
 
   return (
