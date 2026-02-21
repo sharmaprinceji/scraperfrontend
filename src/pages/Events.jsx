@@ -25,31 +25,21 @@ function Events() {
 
 
     const fetchEvents = async (page = 1) => {
-
         try {
-
             setLoading(true);
-
             const res = await API.get(
                 `/events?page=${page}&limit=${pagination.limit}`
             );
-
             setEvents(res.data.data);
-
             setPagination(res.data.pagination);
-
         }
 
         catch (error) {
-
             console.error(error);
-
         }
 
         finally {
-
             setLoading(false);
-
         }
 
     };
@@ -161,8 +151,6 @@ function Events() {
             </motion.div>
 
 
-
-            {/* Event Grid */}
             <motion.div
                 className="grid grid-cols-1 md:grid-cols-3 gap-6"
                 variants={container}
@@ -198,8 +186,6 @@ function Events() {
             </motion.div>
 
 
-
-            {/* Pagination */}
             <motion.div
                 className="flex justify-center items-center gap-3 mt-10"
                 initial={{ opacity: 0 }}

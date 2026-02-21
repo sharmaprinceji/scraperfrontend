@@ -14,8 +14,7 @@ function Navbar() {
         px-6 py-4
         flex justify-between items-center
         shadow-md
-        z-50
-      "
+        z-50"
         >
 
             <Link
