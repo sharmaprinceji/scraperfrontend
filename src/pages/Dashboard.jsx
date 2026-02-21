@@ -1,340 +1,289 @@
+// 
+
 import { useEffect, useState } from "react";
 import API from "../api/axios";
 import { useAuth } from "../context/AuthContext";
+import useDebounce from "../hooks/useDebounce";
 
-function Dashboard() {
+export default function Dashboard() {
 
-  const { user } = useAuth();
+    const { user } = useAuth();
 
-  const [events, setEvents] = useState([]);
-  const [loading, setLoading] = useState(true);
+    const [events, setEvents] = useState([]);
 
-  // pagination state
-  const [pagination, setPagination] = useState({
-    page: 1,
-    pages: 1,
-    total: 0,
-    limit: 10
-  });
+    const [search, setSearch] = useState("");
+    const debouncedSearch = useDebounce(search, 500);
 
-  // filters state
-  const [filters, setFilters] = useState({
-    keyword: "",
-    status: "",
-    city: "",
-    startDate: "",
-    endDate: ""
-  });
+    const [status, setStatus] = useState("");
+    const [city, setCity] = useState("");
+    const [fromDate, setFromDate] = useState("");
+    const [toDate, setToDate] = useState("");
 
-  const [importingId, setImportingId] = useState(null);
+    const [page, setPage] = useState(1);
+    const [pages, setPages] = useState(1);
+    const [total, setTotal] = useState(0);
 
-  useEffect(() => {
-
-    if (user) {
-      fetchEvents(1);
-    }
-
-  }, [user, filters]);
+    const [loading, setLoading] = useState(false);
+    const [importingId, setImportingId] = useState(null);
 
 
 
-  // fetch events with pagination
-  const fetchEvents = async (page = 1) => {
+    const fetchEvents = async () => {
 
-    try {
+        if (!user) return;
 
-      setLoading(true);
+        setLoading(true);
 
-      const query = new URLSearchParams({
-        ...filters,
-        page,
-        limit: pagination.limit
-      }).toString();
+        try {
 
-      const res = await API.get(`/events?${query}`);
+            const res = await API.get("/events", {
+                params: {
+                    keyword: debouncedSearch,
+                    status,
+                    city,
+                    startDate: fromDate,
+                    endDate: toDate,
+                    page,
+                    limit: 10
+                }
+            });
 
-      setEvents(res.data.data);
+            setEvents(res.data.data);
+            setPages(res.data.pagination.pages);
+            setTotal(res.data.pagination.total);
 
-      setPagination(res.data.pagination);
+        }
 
-    } catch (error) {
+        catch (err) {
 
-      console.error(error);
+            console.error(err);
 
-    } finally {
+        }
 
-      setLoading(false);
+        finally {
 
-    }
+            setLoading(false);
 
-  };
+        }
 
-
-
-  // change page
-  const changePage = (newPage) => {
-
-    if (newPage < 1 || newPage > pagination.pages)
-      return;
-
-    fetchEvents(newPage);
-
-  };
+    };
 
 
 
-  // import event
-  const importEvent = async (id) => {
+    useEffect(() => {
 
-    try {
+        fetchEvents();
 
-      setImportingId(id);
-
-      await API.post(`/events/import/${id}`, {
-        notes: "Imported from dashboard"
-      });
-
-      fetchEvents(pagination.page);
-
-    } catch {
-
-      alert("Import failed");
-
-    } finally {
-
-      setImportingId(null);
-
-    }
-
-  };
+    }, [debouncedSearch, status, city, fromDate, toDate, page, user]);
 
 
 
-  // handle filter change
-  const handleChange = (e) => {
+    const importEvent = async (id) => {
 
-    setFilters({
-      ...filters,
-      [e.target.name]: e.target.value
-    });
+        try {
 
-  };
+            setImportingId(id);
+
+            await API.post(`/events/import/${id}`);
+
+            fetchEvents();
+
+        }
+
+        finally {
+
+            setImportingId(null);
+
+        }
+
+    };
 
 
-
-  if (loading) {
 
     return (
-      <div className="flex justify-center items-center h-screen">
-        Loading...
-      </div>
+
+        <div className="p-10 max-w-7xl mx-auto">
+
+            <h1 className="text-3xl font-bold mb-6">
+                Events Dashboard
+            </h1>
+
+
+
+            {/* Filters */}
+            <div className="grid grid-cols-1 md:grid-cols-5 gap-4 mb-6">
+
+                <input
+                    placeholder="Search events..."
+                    value={search}
+                    onChange={(e) => {
+                        setSearch(e.target.value);
+                        setPage(1);
+                    }}
+                    className="border p-2 rounded"
+                />
+
+                <select
+                    value={status}
+                    onChange={(e) => {
+                        setStatus(e.target.value);
+                        setPage(1);
+                    }}
+                    className="border p-2 rounded"
+                >
+                    <option value="">All Status</option>
+                    <option value="new">New</option>
+                    <option value="imported">Imported</option>
+                </select>
+
+                <input
+                    placeholder="City"
+                    value={city}
+                    onChange={(e) => {
+                        setCity(e.target.value);
+                        setPage(1);
+                    }}
+                    className="border p-2 rounded"
+                />
+
+                <input
+                    type="date"
+                    value={fromDate}
+                    onChange={(e) => {
+                        setFromDate(e.target.value);
+                        setPage(1);
+                    }}
+                    className="border p-2 rounded"
+                />
+
+                <input
+                    type="date"
+                    value={toDate}
+                    onChange={(e) => {
+                        setToDate(e.target.value);
+                        setPage(1);
+                    }}
+                    className="border p-2 rounded"
+                />
+
+            </div>
+
+
+
+            {/* Info */}
+            <div className="mb-4 text-gray-600">
+                Showing page {page} of {pages} ({total} events)
+            </div>
+
+
+
+            {/* Table */}
+            {loading ? (
+
+                <div className="text-center p-10">
+                    Loading events...
+                </div>
+
+            ) : (
+
+                <table className="w-full border">
+
+                    <thead>
+                        <tr className="bg-gray-200">
+                            <th className="p-2">Title</th>
+                            <th>Status</th>
+                            <th>Date</th>
+                            <th>City</th>
+                            <th>Venue</th>
+                            <th>Action</th>
+                        </tr>
+                    </thead>
+
+                    <tbody>
+
+                        {events.map(event => (
+
+                            <tr key={event._id}>
+
+                                <td className="p-2">{event.title}</td>
+
+                                <td className="p-2 capitalize">
+                                    {event.status}
+                                </td>
+
+                                <td className="p-2">
+                                    {new Date(event.dateTime).toLocaleDateString()}
+                                </td>
+
+                                <td className="p-2">
+                                    {event.city}
+                                </td>
+
+                                <td className="p-2">
+                                    {event.venueName}
+                                </td>
+
+                                <td className="p-2">
+
+                                    {event.status !== "imported" ? (
+
+                                        <button
+                                            onClick={() => importEvent(event._id)}
+                                            disabled={importingId === event._id}
+                                            className="bg-green-500 text-white px-3 py-1 rounded"
+                                        >
+                                            Import
+                                        </button>
+
+                                    ) : (
+
+                                        <span className="text-green-600">
+                                            Imported
+                                        </span>
+
+                                    )}
+
+                                </td>
+
+                            </tr>
+
+                        ))}
+
+                    </tbody>
+
+                </table>
+
+            )}
+
+
+
+            {/* Pagination */}
+            <div className="flex justify-center gap-4 mt-6">
+
+                <button
+                    disabled={page === 1}
+                    onClick={() => setPage(page - 1)}
+                    className="bg-gray-300 px-4 py-2 rounded"
+                >
+                    Prev
+                </button>
+
+                <span>
+                    {page} / {pages}
+                </span>
+
+                <button
+                    disabled={page === pages}
+                    onClick={() => setPage(page + 1)}
+                    className="bg-gray-300 px-4 py-2 rounded"
+                >
+                    Next
+                </button>
+
+            </div>
+
+        </div>
+
     );
 
-  }
-
-
-
-  return (
-
-    <div className="p-10">
-
-      <h1 className="text-3xl font-bold mb-6">
-        Dashboard
-      </h1>
-
-
-
-      {/* Filters */}
-      <div className="grid grid-cols-5 gap-4 mb-6">
-
-        <input
-          type="text"
-          name="keyword"
-          placeholder="Search..."
-          value={filters.keyword}
-          onChange={handleChange}
-          className="border p-2 rounded"
-        />
-
-        <select
-          name="status"
-          value={filters.status}
-          onChange={handleChange}
-          className="border p-2 rounded"
-        >
-          <option value="">All Status</option>
-          <option value="new">New</option>
-          <option value="updated">Updated</option>
-          <option value="inactive">Inactive</option>
-          <option value="imported">Imported</option>
-        </select>
-
-        <input
-          type="text"
-          name="city"
-          placeholder="City"
-          value={filters.city}
-          onChange={handleChange}
-          className="border p-2 rounded"
-        />
-
-        <input
-          type="date"
-          name="startDate"
-          value={filters.startDate}
-          onChange={handleChange}
-          className="border p-2 rounded"
-        />
-
-        <input
-          type="date"
-          name="endDate"
-          value={filters.endDate}
-          onChange={handleChange}
-          className="border p-2 rounded"
-        />
-
-      </div>
-
-
-
-      {/* Pagination info */}
-      <div className="mb-4 text-gray-600">
-
-        Showing page {pagination.page} of {pagination.pages}
-        ({pagination.total} total events)
-
-      </div>
-
-
-
-      {/* Table */}
-      <table className="w-full border">
-
-        <thead>
-
-          <tr className="bg-gray-200">
-
-            <th className="p-2">Title</th>
-            <th>Status</th>
-            <th>Date</th>
-            <th>City</th>
-            <th>Venue</th>
-            <th>Action</th>
-
-          </tr>
-
-        </thead>
-
-        <tbody>
-
-          {events.map(event => (
-
-            <tr key={event._id} className="border">
-
-              <td className="p-2">{event.title}</td>
-
-              <td className="p-2 capitalize">
-                {event.status}
-              </td>
-
-              <td className="p-2">
-                {new Date(event.dateTime).toLocaleDateString()}
-              </td>
-
-              <td className="p-2">
-                {event.city}
-              </td>
-
-              <td className="p-2">
-                {event.venueName}
-              </td>
-
-              <td className="p-2">
-
-                {event.status !== "imported" ? (
-
-                  <button
-                    onClick={() => importEvent(event._id)}
-                    disabled={importingId === event._id}
-                    className="bg-green-500 text-white px-3 py-1 rounded"
-                  >
-                    {importingId === event._id
-                      ? "Importing..."
-                      : "Import"}
-                  </button>
-
-                ) : (
-
-                  <span className="text-green-600">
-                    Imported
-                  </span>
-
-                )}
-
-              </td>
-
-            </tr>
-
-          ))}
-
-        </tbody>
-
-      </table>
-
-
-
-      {/* Pagination Controls */}
-      <div className="flex justify-center items-center gap-2 mt-6">
-
-        <button
-          onClick={() => changePage(pagination.page - 1)}
-          disabled={pagination.page === 1}
-          className="px-3 py-1 bg-gray-300 rounded disabled:opacity-50"
-        >
-          Previous
-        </button>
-
-
-        {[...Array(pagination.pages)].map((_, index) => {
-
-          const pageNum = index + 1;
-
-          return (
-
-            <button
-              key={pageNum}
-              onClick={() => changePage(pageNum)}
-              className={`px-3 py-1 rounded ${
-                pagination.page === pageNum
-                  ? "bg-blue-500 text-white"
-                  : "bg-gray-200"
-              }`}
-            >
-              {pageNum}
-            </button>
-
-          );
-
-        })}
-
-
-        <button
-          onClick={() => changePage(pagination.page + 1)}
-          disabled={pagination.page === pagination.pages}
-          className="px-3 py-1 bg-gray-300 rounded disabled:opacity-50"
-        >
-          Next
-        </button>
-
-      </div>
-
-
-
-    </div>
-
-  );
-
 }
-
-export default Dashboard;

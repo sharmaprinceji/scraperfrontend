@@ -15,22 +15,27 @@ function App() {
 
       <Navbar />
 
-      <Routes>
+      {/* This div prevents content going behind navbar */}
+      <div className="pt-20">
 
-        <Route path="/" element={<Login />} />
+        <Routes>
 
-        <Route path="/events" element={<Events />} />
+          <Route path="/" element={<Login />} />
 
-        <Route
-          path="/dashboard"
-          element={
-            <ProtectedRoute>
-              <Dashboard />
-            </ProtectedRoute>
-          }
-        />
+          <Route path="/events" element={<Events />} />
 
-      </Routes>
+          <Route
+            path="/dashboard"
+            element={
+              <ProtectedRoute>
+                <Dashboard />
+              </ProtectedRoute>
+            }
+          />
+
+        </Routes>
+
+      </div>
 
     </BrowserRouter>
 
